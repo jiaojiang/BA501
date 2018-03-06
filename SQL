@@ -1,0 +1,123 @@
+1:
+/* Assume no duplicate value in Spend */
+SELECT ot1.spend
+FROM order_table AS ot1
+INNER JOIN order_table AS ot2
+   ON ot1.spend < ot2. Spend
+WHERE ot1.date >= ’01/01/2000’ AND ot2.date >= ’01/01/2000’
+Group BY 1
+HAVING COUNT (1) = 10;
+
+
+2a:
+SELECT count(distinct t2.Category_ID)
+AS count
+FROM Product_Table t1
+INNER JOIN Category_Table t2
+  ON t1.Category_ID = t2. Category_ID
+WHERE t2.Category_ID IS NULL
+Group by 1;
+
+2b:
+SELECT Product_ID, SUM(Order_Amount) AS total
+FROM Order_Table
+WHERE Order_Date >= ‘2016/1/1’
+GROUP BY 1
+ORDER BY 2 DESC
+LIMIT 10;
+
+2c:
+SELECT t2.Category_ID, t1.Product_ID, t1.Order_Amount
+INTO Temp_Table
+FROM Order_Table T1
+INNER JOIN Product_Table T2
+  ON T1.Product_ID = T2.Product_ID
+/*postgresql*/
+WHERE Order_Date <= CURRENT_DATE - INTERVAL ‘3 months’
+GROUP BY 1,2,3
+/*Question: why cant do group by 1*/
+SELECT *
+, ROW_NUMBER () OVER (PARTITION BY Category_ID
+                                            	ORDER BY Order_Amount DESC)
+AS rank
+INTO Rank_table
+FROM Temp_Table
+SELECT * FROM rank_Table
+/*WHERE rank = 1000 ERROR: column “rank” does not exist*/
+
+2d:
+/*New Users*/
+SELECT count (DISTINCT Customer_ID)
+AS count
+FROM Customer_Table
+WHERE First_Visit <= CURRENT_DATE – INTERVAL ‘-1 MONTH’
+/*New Buyers*/
+SELECT count (DISTINCT T1.Customer_ID)
+AS count
+FROM Customer_Table T1
+INNER JOIN Order_Table T2
+  ON T1.Customer_ID = T2.Customer_ID
+WHERE First_Visit <= CURRENT_DATE – INTERVAL ‘-1 MONTH’
+
+2e:
+/* Product_PRICE is unknown, assume revenue is calculated by Order_Amount * a constant number*/
+/*Assume YoY Growth in 2016 is calculated by the amount of revenue in 2016 (1/1/16 to 12/31/16) minus the amount of revenue in 2015 (1/1/15 to 12/31/15) */
+/*Year 2015*/
+SELECT t2.Category_ID, t1.Order_Amount
+INTO Table2015
+FROM Order_Table T1
+INNER JOIN Product_Table T2
+  ON T1.Product_ID = T2.Product_ID
+WHERE Order_Date >= ‘01/01/2015’
+  AND Order_Date <= ‘12/31/2015’
+ /*Year 2016*/
+SELECT t2.Category_ID, t1.Order_Amount
+INTO Table2016
+FROM Order_Table tT1
+INNER JOIN Product_Table T2
+  ON T1.Product_ID = T2.Product_ID
+WHERE Order_Date >= ‘01/01/2016’
+  AND Order_Date <= ‘12/31/2016’
+/*Year 2016 - Year 2015*/
+SELECT Table2015.Category_ID, Table2016.Order_Amount – Table2015.Order_Amount
+AS Total_Revenue
+FROM Table2015
+INNER JOIN Table2016
+  ON Table2015.Category_ID = Table2016.Category_ID
+ORDER BY 2 DESC
+
+2f:
+/*Assumption: most popular products are measured in terms of the highest number of purchase*/
+SELECT T2.Category_ID, T2.Product_ID, SUM(Order_Amount) AS Total
+INTO Temp_Table
+FROM ORDER_TABLE T1
+INNER JOIN Product_Table T2
+ON T1.Product_ID = T2.Product_ID
+GROUP BY 2
+ORDER BY Total DESC
+LIMIT 1
+SELECT COUNT (*)
+FROM
+(SELECT *
+FROM Temp_Table T1
+INNER JOIN ORDER_TABLE T2
+ON T1.Product_ID = T2.Product_ID
+WHERE Order_Date < CURRENT_DATE - INTERVAL '-6 MONTH')
+Order_Table
+
+2g:
+SELECT DISTINCT (t1.customer_ID) AS id1, t1.product_ID AS pd1, customer_ID AS id2, t2.Product_ID AS pd2
+INTO temp_table
+FROM order_table t1
+CROSS JOIN product_table t2
+/*Count pairs*/
+SELECT COUNT (*)
+FROM
+(SELECT CASE
+WHEN id1=id2 AND pd1!=pd2
+/*Not sure about RETURN function*/
+THEN RETURN (pd1,pd2) 
+END
+FROM temp_table
+GROUP BY 5)
+LIMIT 10
